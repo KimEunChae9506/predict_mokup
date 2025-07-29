@@ -16,7 +16,7 @@ async def root():
 
 @app.get("/slider")
 async def root():
-    return RedirectResponse(url="https://2606bbc3548e.ngrok-free.app")
+    return RedirectResponse(url="https://predict-mokup-slide.onrender.com")
 
 ### 기본 12개 요소 고정 가중치 (%) ###
 DEFAULT_WEIGHTS_12 = {

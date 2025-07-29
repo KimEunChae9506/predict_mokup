@@ -7,8 +7,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
-API_URL = "http://localhost:8001/predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
-AI_API_URL = "http://localhost:8001/ai-predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
+API_URL = "https://predict-mokup.onrender.com/predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
+AI_API_URL = "https://predict-mokup.onrender.com/ai-predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
 
 today = date.today()
 if today.weekday() == 0:  # 월요일
