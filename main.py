@@ -37,7 +37,6 @@ DEFAULT_WEIGHTS_12 = {
 ### 5개 커스텀 요소 → 12개 요소 매핑 비율표 ###
 CUSTOM_KEYS = list(DEFAULT_WEIGHTS_12.keys())
 
-
 ### POST 요청 데이터 정의 ###
 class PredictionRequest(BaseModel):
     team: str

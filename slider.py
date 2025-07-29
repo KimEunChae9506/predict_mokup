@@ -268,8 +268,6 @@ if st.button("AI#3 트렌드", key="btn_trend"):
     request_ai_report(AI_API_URL, team1, team2, mode="trend", session_key="ai_trend_report")
 
 
-
-
 # 현재 팀 표시
 st.write("team1", team1)
 st.write("team2", team2)
