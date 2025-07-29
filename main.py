@@ -102,7 +102,7 @@ def build_ai_mode_user_prompt(mode: str, teams: str) -> str:
         prompt_lines.append("- 오직 통계 데이터를 근거로 승/패 예측, 점수 예상, 주요 변수와 신뢰도도 설명해 주세요.")
         prompt_lines.append("- 추가 변수(부상, 날씨 등)는 별도 섹션으로 정리합니다.")
 
-    elif mode == "field":  # 현장파
+    elif mode == "site":  # 현장파
         prompt_lines.append("▼ [현장파 예측]")
         prompt_lines.append("- 반드시 '팀 피로도'(0.41), '중심타선 컨디션·전력'(0.22), '수비시프트 전략'(0.16) 항목을 중점적으로 분석하고,")
         prompt_lines.append("- 현장 기사·전문가 발언, 실전 변수와 분위기 등 현장감 넘치는 근거를 집중 반영해 예측 결과와 근거를 제시해 주세요.")

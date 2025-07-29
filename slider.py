@@ -7,8 +7,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 
-API_URL = "https://predict-mokup.onrender.com/predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
-AI_API_URL = "https://predict-mokup.onrender.com/ai-predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
+API_URL = "http://localhost:8001/predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
+AI_API_URL = "http://localhost:8001/ai-predict"  # customLLM.py에서 FastAPI 띄운 주소 예시
 
 today = date.today()
 if today.weekday() == 0:  # 월요일
@@ -83,7 +83,7 @@ st.title("기본 가중치 기반 야구 승률 예측")
 
 if st.button("기본 가중치로 승률 예측하기", key="btn_default"):
     if team1 == team2:
-        st.warning("홈팀과 원정팀은 서로 달라야 합니다.")
+        st.warning("예측할 경기를 선택해주세요.")
     else:
         payload = {"team": f"{team1},{team2}", "mode": "default"}
         try:
@@ -222,7 +222,7 @@ if st.button("커스텀 가중치로 승률 예측하기", key="btn_custom"):
     #elif team1 == team2:
         #st.warning("홈팀과 원정팀은 서로 달라야 합니다.")
     if team1 == team2:
-        st.warning("홈팀과 원정팀은 서로 달라야 합니다.")
+        st.warning("예측할 경기를 선택해주세요.")
     else:
         payload = {"team": f"{team1},{team2}", "mode": "custom", "weights": weights}
         try:
@@ -240,7 +240,7 @@ if st.button("커스텀 가중치로 승률 예측하기", key="btn_custom"):
 
 def request_ai_report(api_url, team1, team2, mode, session_key):
     if team1 == team2:
-        st.warning("홈팀과 원정팀은 서로 달라야 합니다.")
+        st.warning("예측할 경기를 선택해주세요.")
         return
     payload = {"team": f"{team1},{team2}", "mode": mode}
     try:
