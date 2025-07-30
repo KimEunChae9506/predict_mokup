@@ -20,7 +20,9 @@ today_str = today.strftime("%Y-%m-%d")
 
 # ⚙️ 세션 초기화 함수
 def init_session_state():
-    keys = ["default_report", "custom_report", "ai_stat_report", "ai_site_report", "ai_trend_report"]
+    keys = ["default_report", "custom_report", "ai_stat_report", "ai_site_report", "ai_trend_report",
+            "default_json", "custom_json", "ai_stat_json", "ai_site_json", "ai_trend_json"
+            ]
     for k in keys:
         st.session_state.setdefault(k, None)
 
@@ -94,7 +96,13 @@ if st.button("기본 가중치로 예측하기"):
     if not team1 or not team2 or team1 == team2:
         st.warning("예측할 경기를 선택해주세요.")
     else:
-        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "default"}, "default_report")
+        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "default", "returnType": "report"}, "default_report")
+
+if st.button("기본 가중치로 예측하기 - 승률 JSON 리턴"):
+    if not team1 or not team2 or team1 == team2:
+        st.warning("예측할 경기를 선택해주세요.")
+    else:
+        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "default", "returnType": "json"}, "default_json")
 
 # UI: 커스텀 가중치 슬라이더
 st.title("커스텀 가중치 기반 예측")
@@ -121,7 +129,14 @@ if st.button("커스텀 가중치로 예측하기"):
         st.warning("예측할 경기를 선택해주세요.")
     else:
         weights = {k: st.session_state[k] for k in weight_keys}
-        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "custom", "weights": weights}, "custom_report")
+        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "custom", "weights": weights, "returnType": "report"}, "custom_report")
+
+if st.button("커스텀 가중치로 예측하기 - 승률 JSON 리턴"):
+    if not team1 or not team2 or team1 == team2:
+        st.warning("예측할 경기를 선택해주세요.")
+    else:
+        weights = {k: st.session_state[k] for k in weight_keys}
+        post_prediction(API_URL, {"team": f"{team1},{team2}", "mode": "custom", "weights": weights, "returnType": "json"}, "custom_json")
 
 # UI: AI 모델들 예측
 st.title("🧠 AI 모델 기반 예측")
@@ -134,7 +149,18 @@ for label, mode, session_key in ai_modes:
         if not team1 or not team2 or team1 == team2:
             st.warning("예측할 경기를 선택해주세요.")
         else:
-            post_prediction(AI_API_URL, {"team": f"{team1},{team2}", "mode": mode}, session_key)
+            post_prediction(AI_API_URL, {"team": f"{team1},{team2}", "mode": mode, "returnType": "report"}, session_key)
+
+ai_modes_json = [("AI#1 통계 - JSON", "stat", "ai_stat_json"),
+            ("AI#2 현장 - JSON", "site", "ai_site_json"),
+            ("AI#3 트렌드 - JSON", "trend", "ai_trend_json")]
+
+for label, mode, session_key in ai_modes_json:
+    if st.button(label):
+        if not team1 or not team2 or team1 == team2:
+            st.warning("예측할 경기를 선택해주세요.")
+        else:
+            post_prediction(AI_API_URL, {"team": f"{team1},{team2}", "mode": mode, "returnType": "json"}, session_key)
 
 # 예측 결과 출력
 def show_result(title, session_key):
@@ -145,7 +171,12 @@ def show_result(title, session_key):
         st.markdown(result, unsafe_allow_html=True)
 
 show_result("기본 예측 결과", "default_report")
+show_result("기본 예측 결과 -JSON", "default_json")
 show_result("커스텀 예측 결과", "custom_report")
+show_result("커스텀 예측 결과 -JSON", "custom_json")
 show_result("AI#1 통계 예측", "ai_stat_report")
+show_result("AI#1 통계 예측 -JSON", "ai_stat_json")
 show_result("AI#2 현장 예측", "ai_site_report")
+show_result("AI#2 현장 예측 -JSON", "ai_site_json")
 show_result("AI#3 트렌드 예측", "ai_trend_report")
+show_result("AI#3 트렌드 예측 -JSON", "ai_trend_json")

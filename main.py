@@ -59,11 +59,11 @@ KOR_LABELS = {
     "insight": "12. 야구 유튜버 예측 인사이트"
 }
 
-
 ### POST 요청 데이터 정의 ###
 class PredictionRequest(BaseModel):
     team: str
     mode: str  # "default" 또는 "custom"
+    returnType: str  # "report" 또는 "json"
     weights: Dict[str, int] = None
 
 
@@ -85,13 +85,11 @@ def build_user_prompt(final_weights_12: dict, teams: str) -> str:
     prompt_lines.append("1. 두 팀 승리 확률 (%)")
     prompt_lines.append("2. 전력 비교 요약 (텍스트 및 표 활용).")
     prompt_lines.append("3. 12가지 각 예측 요소에 대한 설명.")
-    prompt_lines.append(
-        "4. 예상 최종 스코어(예: 4:3, 6:4 등)와 양 팀의 예상 '합산 점수', 점수차, 합계 홀짝 여부(odd/even), 오버/언더 임계치(예: 기준점 8.5 기준 over/under)")
+    prompt_lines.append("4. 예상 최종 스코어(예: 4:3, 6:4 등)와 양 팀의 예상 '합산 점수', 점수차, 합계 홀짝 여부(odd/even), 오버/언더 임계치(예: 기준점 8.5 기준 over/under)")
     prompt_lines.append("5. 예상 우세 팀 + 분석 근거 (4-6줄)")
     prompt_lines.append("6. 리스크 요인 2가지 제시")
 
     return "\n".join(prompt_lines)
-
 
 ### user_prompt AI 모델별 생성 함수 ###
 def build_ai_mode_user_prompt(mode: str, teams: str) -> str:
@@ -132,7 +130,6 @@ def build_ai_mode_user_prompt(mode: str, teams: str) -> str:
 
     return "\n".join(prompt_lines)
 
-
 ### custom 가중치 DEFAULT_WEIGHTS_12 에 담기###
 def expand_custom_weights(custom_weights: Dict[str, float]) -> Dict[str, float]:
     result = {key: 0.0 for key in DEFAULT_WEIGHTS_12}
@@ -169,8 +166,30 @@ def get_perplexity_response(system_prompt: str, user_prompt: str) -> str:
     reply = response.json()
     return reply["choices"][0]["message"]["content"]
 
+#기본 system prompt
+COMMON_SYSTEM_PROMPT = """
+    당신은 KBO 리그 전문 야구 데이터 분석가이며, AI 리포트 작성자입니다.
+    아래 출처의 최신 데이터를 반드시 참고해 예측 분석 리포트를 작성하십시오.
+    - KBO 공식 홈페이지의 게임센터,기록실(선발·불펜, 누적 및 경기별 스탯)
+    - Naver Sports, statiz, Livesport, Flashscore 등 검증된 실시간 프로야구 데이터 사이트
+    - '매일 야구 분석 라운지', '크보오프너 주간오프너' 유튜브 채널 정보
 
-# LLM 에 경기결과 예측 호출 (가중치 조절)
+    리포트는 간결하고 명확하게 존댓말로 작성하십시오.
+"""
+
+# 승률을 json 으로 리턴하는 추가 프롬프트
+def append_json_format_prompt(user_prompt, team1, team2):
+    return user_prompt + f"""
+\n최종 출력은 반드시 아래처럼 두 팀의 승률을 JSON 형식으로만 해주세요. 다른 설명은 절대 하지 마세요."
+형식:\n{{
+  \"win rate\": {{
+    \"{team1}\": \"{team1} 의 승률\",
+    \"{team2}\": \"{team2} 의 승률\"
+  }}
+}}
+"""
+
+#LLM 에 경기결과 예측 호출 (가중치 조절)
 @app.post("/predict")
 def predict(req: PredictionRequest):
     if req.mode == "default":
@@ -184,71 +203,36 @@ def predict(req: PredictionRequest):
     else:
         return {"error": "Invalid request. 'mode' must be 'default' or 'custom'."}
 
-    # 프롬프트 생성
     user_prompt = build_user_prompt(weights_12, req.team)
-    system_prompt = """
-        당신은 KBO 리그 전문 야구 데이터 분석가이며, AI 리포트 작성자입니다. 
-        아래 출처의 최신 데이터를 반드시 참고해 예측 분석 리포트를 작성하십시오.
-        - KBO 공식 홈페이지의 게임센터,기록실(선발·불펜, 누적 및 경기별 스탯):  https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx, https://www.koreabaseball.com/record/player/hitterbasic/basic1.aspx
-        - Naver Sports, statiz, Livesport, Flashscore 등 검증된 실시간 프로야구 데이터 사이트
-        특히, 전문가 예측과 전력 해석에는 다음 유튜브 분석 정보도 반드시 포함해야 합니다.
-        - 경기 당일 예측 정보: '매일 야구 분석 라운지' 유튜브 채널의 당일 경기 예측 요약 및 해설 인사이트
-        - 주간 전망 정보: '크보오프너 주간오프너(주간야구분석)' 유튜브 채널의 최신 주간 예측 요약 및 전체 프레임 해설
 
-        리포트 작성 시,
-        - 당일 예측 정보(30분~1시간 전)와 주간 예측 정보 모두를 각각 별도 section으로 요약하여 주요 근거와 리스크에 반영하십시오.
-        - 두 정보가 상충하거나 차이가 있을 경우, 그 이유와 각 정보의 시점·문맥을 모두 해설로 포함해 주세요.
-        - 분석, 예측, 통계, 리포트 내용이 위 공식 데이터 출처 또는 위 유튜브 분석 결과와 정확히 일치하는지 답변 전 반드시 한 번 더 교차 검토하고, 실제 자료와 다르거나 오류가 있을 경우 반드시 정정·보완해서 답변해 주세요.
-        - 모든 분석과 결과는 한국어로, 리포트는 실제 KBO 전문 데이터 분석가처럼 간결하고 명확하게 존댓말로 작성하십시오.
-        """
+    if req.returnType == "json":
+        team1, team2 = map(str.strip, req.team.split(","))
+        user_prompt = append_json_format_prompt(user_prompt, team1, team2)
 
     try:
-        ai_report = get_perplexity_response(system_prompt, user_prompt)
+        ai_report = get_perplexity_response(COMMON_SYSTEM_PROMPT, user_prompt)
     except Exception as e:
         print("[ERROR] AI 요청 중 에러 발생:", req.team, req.weights)
         traceback.print_exc()
         return {"error": f"AI 요청 실패: {str(e)}"}
 
-    return {
-        "report": ai_report
-    }
+    return {"report": ai_report}
 
 
-# LLM 에 경기결과 예측 호출 (AI 모델별 예측)
-# @app.post("/ai-predict")
-def predict(req: PredictionRequest):
-    # 프롬프트 생성
+#LLM 에 경기결과 예측 호출 (AI 모델별 예측)
+@app.post("/ai-predict")
+def predict_ai(req: PredictionRequest):
     user_prompt = build_ai_mode_user_prompt(req.mode, req.team)
-    system_prompt = """
-        당신은 KBO 리그 전문 야구 데이터 분석가이며, AI 리포트 작성자입니다. 
-        아래 출처의 최신 데이터를 반드시 참고해 예측 분석 리포트를 작성하십시오.
-        - KBO 공식 홈페이지의 게임센터,기록실(선발·불펜, 누적 및 경기별 스탯):  https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx, https://www.koreabaseball.com/record/player/hitterbasic/basic1.aspx
-        - Naver Sports, statiz, Livesport, Flashscore 등 검증된 실시간 프로야구 데이터 사이트
 
-        리포트 작성 시,
-        - 분석, 예측, 통계, 리포트 내용이 위 공식 데이터 출처 또는 위 유튜브 분석 결과와 정확히 일치하는지 답변 전 반드시 한 번 더 교차 검토하고, 실제 자료와 다르거나 오류가 있을 경우 반드시 정정·보완해서 답변해 주세요.
-        - 모든 분석과 결과는 한국어로, 리포트는 실제 KBO 전문 데이터 분석가처럼 간결하고 명확하게 존댓말로 작성하십시오.
-        """
+    if req.returnType == "json":
+        team1, team2 = map(str.strip, req.team.split(","))
+        user_prompt = append_json_format_prompt(user_prompt, team1, team2)
 
     try:
-        ai_report = get_perplexity_response(system_prompt, user_prompt)
+        ai_report = get_perplexity_response(COMMON_SYSTEM_PROMPT, user_prompt)
     except Exception as e:
         print("[ERROR] AI 요청 중 에러 발생:", req.team, req.weights)
         traceback.print_exc()
         return {"error": f"AI 요청 실패: {str(e)}"}
 
-    return {
-        "report": ai_report
-    }
-    try:
-        ai_report = get_perplexity_response(system_prompt, user_prompt)
-    except Exception as e:
-        print("[ERROR] AI 요청 중 에러 발생:", req.team, req.weights)
-        traceback.print_exc()
-        return {"error": f"AI 요청 실패: {str(e)}"}
-
-    # mock_report = f"""🧠 AI 분석 리포트"""
-
-    return {
-        "report": ai_report
-    }
+    return {"report": ai_report}
