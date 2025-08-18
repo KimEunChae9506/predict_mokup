@@ -67,6 +67,7 @@ def post_prediction(url, payload, session_key):
         print("Status:", status)
         print("Headers:", headers)
         print("Body:", body)
+        st.session_state[session_key] = f"❌ 서버 오류\n\n```\n{headers}\n```"
 
 
 # 가중치 정규화
