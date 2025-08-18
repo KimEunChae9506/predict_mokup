@@ -58,9 +58,16 @@ def post_prediction(url, payload, session_key):
         res = requests.post(url, json=payload, verify=False)
         res.raise_for_status()
         st.session_state[session_key] = res.json().get("report", "❌ 결과 없음")
-    except Exception as e:
-        trace = traceback.format_exc()
-        st.session_state[session_key] = f"❌ 서버 오류\n\n```\n{trace}\n```"
+    except requests.exceptions.HTTPError as e:
+        status = res.status_code if 'res' in locals() else "No response"
+        headers = res.headers if 'res' in locals() else {}
+        body = res.text if 'res' in locals() else ""
+
+        print("🔥 Perplexity API 호출 실패")
+        print("Status:", status)
+        print("Headers:", headers)
+        print("Body:", body)
+
 
 # 가중치 정규화
 def normalize_weights(keys):
